@@ -5,19 +5,21 @@ export const addItem = data =>
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 
-export const getAllItem = params => {
+export const getAllItem = (params) => {
   const query = new URLSearchParams();
+
   if (params) {
     if (params.page) query.append('page', params.page);
     if (params.limit) query.append('limit', params.limit);
     if (params.search) query.append('search', params.search);
-    if (params.status && Array.isArray(params.status)) {
-      params.status.forEach(s => query.append('status', s));
+    if (params.status) {
+      // send single string or comma-separated
+      query.append('status', Array.isArray(params.status) ? params.status.join(',') : params.status);
     }
-    return api.get(`/item?${query.toString()}`);
-  } else {
-    return api.get(`/item`);
+    if (params.categoryId) query.append('categoryId', params.categoryId);
   }
+
+  return api.get(`/item?${query.toString()}`);
 };
 
 export const updateItem = (id, data) =>

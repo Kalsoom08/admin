@@ -103,10 +103,19 @@ const Employees = () => {
   const handlePageChange = pageNo => dispatch(setPage(pageNo));
   const handleLimitChange = limit => { dispatch(setPerPage(Number(limit))); dispatch(setPage(1)); };
 
-  useEffect(() => {
-    dispatch(fetchAllEmployee({ page, limit: perPage, search: searchTerm, status: statusFilter, role: roleFilter }));
-    dispatch(fetchEmployeeStats());
-  }, [dispatch, page, perPage, searchTerm, statusFilter, roleFilter]);
+useEffect(() => {
+  dispatch(
+    fetchAllEmployee({
+      page,
+      limit: perPage,
+      search: searchTerm || undefined,
+      status: statusFilter.length ? statusFilter : undefined,
+      role: roleFilter.length ? roleFilter[0] : undefined, 
+    })
+  );
+  dispatch(fetchEmployeeStats());
+}, [dispatch, page, perPage, searchTerm, statusFilter, roleFilter]);
+
 
   const smCardsData = [
     { name: 'Total Employees', totalPrice: stats.totalUsers, btnIcon: <NotepadText size={15} />, iconColor: 'bg-[#DCFCE7]', textColor: 'text-[#0ea5e9]' },

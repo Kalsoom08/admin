@@ -24,21 +24,37 @@ export const addEmployee = (data) =>
 //   }
 //   return api.get(`/user?${query.toString()}`);
 // };
-export const getAllEmployee = params => {
+export const getAllEmployee = (params) => {
   const query = new URLSearchParams();
+
   if (params) {
     if (params.page) query.append('page', params.page);
     if (params.limit) query.append('limit', params.limit);
     if (params.search) query.append('search', params.search);
-    if (params.status && Array.isArray(params.status)) {
-      params.status.forEach(s => query.append('status', s));
+
+    // Status filter (single or array)
+    if (params.status) {
+      if (Array.isArray(params.status)) {
+        query.append('status', params.status.join(',')); // comma-separated
+      } else {
+        query.append('status', params.status);
+      }
     }
-    return api.get(`/user?${query.toString()}`);
-  } else {
-    return api.get(`/user`);
+
+    // Role filter (single or array)
+    if (params.role) {
+      if (Array.isArray(params.role)) {
+        query.append('role', params.role.join(',')); 
+      } else {
+        query.append('role', params.role);
+      }
+    }
   }
+
+  return api.get(`/user?${query.toString()}`);
 };
-// Update an employee
+
+
 export const updateEmployee = (id, data) =>
   api.patch(`/user/${id}`, data, {
     headers: { 'Content-Type': 'application/json' }

@@ -27,7 +27,6 @@ import SmCard from '@maincomponents/Cards/SmCard';
 import TableSkeleton from '@maincomponents/loaders/TableSkeleton';
 
 const columnHelper = createColumnHelper();
-
 const SmCardSkeleton = () => <div className='animate-pulse bg-gray-200 h-20 w-full rounded-md'></div>;
 
 const Items = () => {
@@ -39,33 +38,30 @@ const Items = () => {
   const [isEdit, setEdit] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState([]);
+  const [categoryFilter, setCategoryFilter] = useState([]); // array of selected category objects
   const [statusFilter, setStatusFilter] = useState([]);
   const printRef = useRef();
 
-  // Fetch categories if not loaded
   const fetchCategory = async () => {
     if (!categoryOptions?.length) {
       await dispatch(fetchCategoryOptions());
     }
   };
 
-  // Fetch items whenever page, perPage, or filters change
+  // Fetch items whenever filters or pagination change
   useEffect(() => {
-    // send first category ID for backend filter
-    const categoryId = categoryFilter.length ? categoryFilter[0] : undefined;
+    const categoryId = categoryFilter.length ? Number(categoryFilter[0]?.value || categoryFilter[0]) : undefined;
 
-    console.log("Fetching items with filters:", { searchTerm, statusFilter, categoryId });
+dispatch(
+  fetchAllItem({
+    page,
+    limit: perPage,
+    search: searchTerm || undefined,
+    status: statusFilter.length ? statusFilter : undefined,
+    categoryId: categoryFilter.length ? categoryFilter[0] : undefined,
+  })
+);
 
-    dispatch(
-      fetchAllItem({
-        page,
-        limit: perPage,
-        search: searchTerm || undefined,
-        status: statusFilter.length ? statusFilter : undefined,
-        categoryId,
-      })
-    );
   }, [dispatch, page, perPage, searchTerm, statusFilter, categoryFilter]);
 
   const columns = useMemo(() => [
@@ -112,26 +108,21 @@ const Items = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end' className='w-[160px]'>
-            <DropdownMenuItem
-              onClick={() => {
-                dispatch(setSelectedItem(row.original));
-                setEdit(true);
-                setOpen(true);
-              }}
-            >
+            <DropdownMenuItem onClick={() => {
+              dispatch(setSelectedItem(row.original));
+              setEdit(true);
+              setOpen(true);
+            }}>
               Edit
               <DropdownMenuShortcut>
                 <PenLine size={16} />
               </DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                dispatch(setSelectedItem(row.original));
-                setDeleteModal(true);
-              }}
-              className='text-red-500!'
-            >
+            <DropdownMenuItem onClick={() => {
+              dispatch(setSelectedItem(row.original));
+              setDeleteModal(true);
+            }} className='text-red-500!'>
               Delete
               <DropdownMenuShortcut>
                 <Trash size={16} />
