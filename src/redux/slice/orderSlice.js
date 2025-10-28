@@ -19,9 +19,13 @@ const orderSlice = createSlice({
     },
     setPerPage: (state, action) => {
       state.perPage = action.payload;
+      state.page = 1; // Reset page when perPage changes
     },
     setSelectedOrder: (state, action) => {
       state.selectedOrder = action.payload;
+    },
+    resetPage: (state) => {
+      state.page = 1; // Reset page for filters
     },
   },
   extraReducers: (builder) => {
@@ -29,14 +33,13 @@ const orderSlice = createSlice({
       .addCase(fetchAllOrders.pending, (state) => {
         state.listLoading = true;
       })
-.addCase(fetchAllOrders.fulfilled, (state, action) => {
-  state.listLoading = false;
-  const payload = action.payload || {};
-  state.data = payload.orders ?? [];
-  state.totalRows = payload.pagination?.total ?? 0;
-  state.totalPages = payload.pagination?.totalPages ?? 1;
-})
-
+      .addCase(fetchAllOrders.fulfilled, (state, action) => {
+        state.listLoading = false;
+        const payload = action.payload || {};
+        state.data = payload.orders ?? [];
+        state.totalRows = payload.pagination?.total ?? 0;
+        state.totalPages = payload.pagination?.totalPages ?? 1;
+      })
       .addCase(fetchAllOrders.rejected, (state) => {
         state.listLoading = false;
         state.data = [];
@@ -52,5 +55,5 @@ const orderSlice = createSlice({
   },
 });
 
-export const { setPage, setPerPage, setSelectedOrder } = orderSlice.actions;
+export const { setPage, setPerPage, setSelectedOrder, resetPage } = orderSlice.actions;
 export default orderSlice.reducer;
