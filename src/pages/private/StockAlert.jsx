@@ -143,12 +143,17 @@ const StockAlert = () => {
     dispatch(setPage(1));
   };
 
-  useEffect(() => {
-    if (once) {
-      once = false;
-    dispatch(fetchAllStock({ page, limit: perPage, search: searchTerm }));
-    }
-  }, [dispatch, page, perPage, searchTerm]);
+ useEffect(() => {
+  dispatch(
+    fetchAllStock({
+      page,
+      limit: perPage,
+      search: searchTerm,
+      status: statusFilter, 
+    })
+  );
+}, [dispatch, page, perPage, searchTerm, statusFilter]);
+
 
   const smCardsData = [
     { name: 'Total Alerts', totalPrice: totalRows.toString(), iconColor: 'bg-[#DCFCE7]', textColor: 'text-[#16A34A]', btnIcon: <TriangleAlert size={15} /> },
@@ -191,12 +196,13 @@ const StockAlert = () => {
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
-        <FilterSelect
-          label='Status'
-          value={statusFilter}
-          setValue={setStatusFilter}
-          options={Object.entries(STOCK_STATUSS).map(([_, value]) => ({ label: value, value }))}
-        />
+<FilterSelect
+  label='Status'
+  value={statusFilter}
+  setValue={setStatusFilter}
+  options={Object.entries(STOCK_STATUSS).map(([_, value]) => ({ label: value, value }))}
+/>
+
       </div>
 
       <div className='overflow-hidden rounded-md border' ref={printRef}>

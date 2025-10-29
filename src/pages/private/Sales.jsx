@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@maincomponents/components/ui/table';
@@ -16,7 +16,7 @@ import { setPage, setPerPage, fetchAllSales, fetchSalesStats } from '@redux/slic
 import { fetchCategoryOptions } from '@redux/slice/categorySlice';
 
 const columnHelper = createColumnHelper();
-const SmCardSkeleton = () => <div className='animate-pulse bg-gray-200 h-20 w-full rounded-md'></div>;
+const SmCardSkeleton = () => <div className="animate-pulse bg-gray-200 h-20 w-full rounded-md"></div>;
 
 const Sales = () => {
   const dispatch = useDispatch();
@@ -27,13 +27,21 @@ const Sales = () => {
   const [categoryFilter, setCategoryFilter] = useState([]);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     dispatch(fetchAllSales({ page, limit: perPage, items: itemFilter, fromDate, toDate }));
     dispatch(fetchSalesStats());
   }, [page, perPage, itemFilter, fromDate, toDate, dispatch]);
 
-  useEffect(() => { if (!categoryOptions?.length) dispatch(fetchCategoryOptions()); }, [categoryOptions, dispatch]);
+  useEffect(() => {
+    if (!categoryOptions?.length) dispatch(fetchCategoryOptions());
+  }, [categoryOptions, dispatch]);
+
+  const filteredData = useMemo(() => {
+    if (!searchTerm.trim()) return data;
+    return data.filter(item => item.itemName?.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [data, searchTerm]);
 
   const columns = [
     columnHelper.accessor('itemName', { header: 'Item Name' }),
@@ -43,76 +51,108 @@ const Sales = () => {
     columnHelper.accessor('expense', { header: 'Expense' })
   ];
 
-  const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
+  const table = useReactTable({ data: filteredData, columns, getCoreRowModel: getCoreRowModel() });
 
   return (
     <>
- 
-      <div className='py-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-        {statsLoading ? Array(4).fill(0).map((_, idx) => <SmCardSkeleton key={idx} />) :
-          [
-            { name: 'Today Sales', totalPrice: stats?.todaySale, btnIcon: <ChartLine /> },
-            { name: 'Monthly Sales', totalPrice: stats?.saleThisMonth, btnIcon: <FaDollarSign /> },
-            { name: 'Best Selling Item', totalPrice: stats?.analytics?.topSalesItems?.[0]?.name },
-            { name: 'Lowest Selling Item', totalPrice: stats?.lowestSellingItem?.name }
-          ].map((card, idx) => (
-            <SmCard key={idx} {...card} />
-          ))
-        }
-      </div>
-       
-      <div className='flex flex-col lg:flex-row gap-5 py-4'>
-        <div className='w-full lg:w-[49%] bg-card p-4 rounded-xl'>
-          <h1>Top Selling Items</h1>
-          {statsLoading ? <ChartSkeleton /> :
-            <BarCharts data={stats?.analytics?.topSalesItems?.map(i => ({ name: i.name, totalSold: Number(i.totalSold) })) || []} xKey='name' yKey='totalSold' />}
-        </div>
-        <div className='w-full lg:w-[49%] bg-card p-4 rounded-xl'>
-          <h1>Sales By Category</h1>
-          {statsLoading ? <ChartSkeleton /> :
-            <PiLabelCharts data={stats?.analytics?.salesByCategory?.map(c => ({ categoryName: c.categoryName, totalSales: Number(c.totalSales) })) || []} nameKey='categoryName' valueKey='totalSales' />}
-        </div>
-      </div>
-
-<div className='flex flex-wrap items-center gap-6 mb-4'>
   
-  <div className='flex items-center gap-2'>
-    <span className='text-sm text-gray-600'></span>
-    <FilterSelect
-      value={itemFilter}
-      setValue={setItemFilter}
-      options={data.map(item => ({ label: item.itemName, value: item.itemId }))}
-      isMulti
-      className='min-w-[200px]'
-      label= 'Items'
-    />
-  </div>
+      <div className="py-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {statsLoading
+          ? Array(4).fill(0).map((_, idx) => <SmCardSkeleton key={idx} />)
+          : [
+              { name: 'Today Sales', totalPrice: stats?.todaySale, btnIcon: <ChartLine /> },
+              { name: 'Monthly Sales', totalPrice: stats?.saleThisMonth, btnIcon: <FaDollarSign /> },
+              { name: 'Best Selling Item', totalPrice: stats?.analytics?.topSalesItems?.[0]?.name },
+              { name: 'Lowest Selling Item', totalPrice: stats?.lowestSellingItem?.name }
+            ].map((card, idx) => <SmCard key={idx} {...card} />)}
+      </div>
 
-  <div className='flex items-center gap-2'>
-    <span className='text-sm text-gray-600'>From:</span>
+   
+      <div className="flex flex-col lg:flex-row gap-5 py-4">
+        <div className="w-full lg:w-[49%] bg-card p-4 rounded-xl">
+          <h1>Top Selling Items</h1>
+          {statsLoading ? (
+            <ChartSkeleton />
+          ) : (
+            <BarCharts
+              data={stats?.analytics?.topSalesItems?.map(i => ({
+                name: i.name,
+                totalSold: Number(i.totalSold)
+              })) || []}
+              xKey="name"
+              yKey="totalSold"
+            />
+          )}
+        </div>
+        <div className="w-full lg:w-[49%] bg-card p-4 rounded-xl">
+          <h1>Sales By Category</h1>
+          {statsLoading ? (
+            <ChartSkeleton />
+          ) : (
+            <PiLabelCharts
+              data={stats?.analytics?.salesByCategory?.map(c => ({
+                categoryName: c.categoryName,
+                totalSales: Number(c.totalSales)
+              })) || []}
+              nameKey="categoryName"
+              valueKey="totalSales"
+            />
+          )}
+        </div>
+      </div>
+
+
+      <div className="flex flex-wrap items-center gap-4 mb-4">
+        <Input
+          placeholder="Search by item name"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="w-full sm:w-[250px]"
+        />
+
+        <FilterSelect
+          value={itemFilter}
+          setValue={setItemFilter}
+          options={data.map(item => ({ label: item.itemName, value: item.itemId }))}
+          isMulti
+          className="min-w-[200px]"
+          label="Items"
+        />
+
+    <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
+  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+    <span className="text-sm text-gray-600 min-w-[40px]">From:</span>
     <Input
-      type='date'
+      type="date"
       value={fromDate}
-      onChange={e => setFromDate(e.target.value)}
-      className='w-40'
+      onChange={e => {
+        const newFrom = e.target.value;
+        setFromDate(newFrom);
+        // If "to" is earlier than new "from", reset it
+        if (toDate && new Date(newFrom) > new Date(toDate)) {
+          setToDate('');
+        }
+      }}
+      className="w-full sm:w-40"
     />
   </div>
 
-  <div className='flex items-center gap-2'>
-    <span className='text-sm text-gray-600'>To:</span>
+  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+    <span className="text-sm text-gray-600 min-w-[40px]">To:</span>
     <Input
-      type='date'
+      type="date"
       value={toDate}
+      min={fromDate || ''}
       onChange={e => setToDate(e.target.value)}
-      className='w-40'
+      className="w-full sm:w-40"
+      disabled={!fromDate}
     />
   </div>
 </div>
 
+      </div>
 
-
-
-      <div className='overflow-hidden rounded-md border mt-5'>
+      <div className="overflow-hidden rounded-md border mt-5">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(hg => (
@@ -124,21 +164,27 @@ const Sales = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {listLoading ? <TableSkeleton columnsCount={columns.length} /> :
-              table.getRowModel().rows.length ? table.getRowModel().rows.map(row => (
+            {listLoading ? (
+              <TableSkeleton columnsCount={columns.length} />
+            ) : table.getRowModel().rows.length ? (
+              table.getRowModel().rows.map(row => (
                 <TableRow key={row.original.itemId}>
                   {row.getVisibleCells().map(cell => (
                     <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
-              )) :
-                <TableRow>
-                  <TableCell colSpan={columns.length} className='text-center'>No results.</TableCell>
-                </TableRow>
-            }
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
+
       <TablePagination
         totalRecords={totalRows}
         totalPages={totalPages}

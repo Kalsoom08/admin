@@ -5,9 +5,7 @@ import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from '
 import { Button } from '@maincomponents/components/ui/button';
 import { Input } from '@maincomponents/components/ui/input';
 import { Badge } from '@maincomponents/components/ui/badge';
-import { CalendarIcon, Ellipsis, PenLine, Trash } from 'lucide-react';
-import { Popover, PopoverTrigger, PopoverContent } from '@maincomponents/components/ui/popover';
-import { Calendar } from '@maincomponents/components/ui/calendar';
+import { Ellipsis, PenLine, Trash } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -34,7 +32,6 @@ import TableSkeleton from '@maincomponents/loaders/TableSkeleton';
 import BarCharts from '@maincomponents/charts/BarCharts';
 import PiLabelCharts from '@maincomponents/charts/PiLabelCharts';
 import { CATEGORY_COLOR } from '@data/Constants';
-
 import { fetchAllExpenses } from '@redux/actions/expense';
 import { setPage, setPerPage, setSelectedExpense } from '@redux/slice/expensesSlice';
 
@@ -43,14 +40,12 @@ const columnHelper = createColumnHelper();
 const Expenses = () => {
   const dispatch = useDispatch();
   const { data, listLoading, totalRows, page, perPage, totalPages } = useSelector(state => state.expenses);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [itemFilter, setItemFilter] = useState([]);
   const [dateRange, setDateRange] = useState({ from: null, to: null });
   const [open, setOpen] = useState(false);
   const [isEdit, setEdit] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
-
   const [allExpenses, setAllExpenses] = useState([]);
 
   useEffect(() => {
@@ -60,7 +55,6 @@ const Expenses = () => {
       setAllExpenses(fullData);
     })();
   }, [dispatch]);
-
 
   const itemOptions = useMemo(() => {
     if (!data?.length) return [];
@@ -77,7 +71,6 @@ const Expenses = () => {
     return Array.from(itemsMap.values());
   }, [data]);
 
-
   const apiParams = useMemo(() => {
     const params = {
       page,
@@ -85,10 +78,9 @@ const Expenses = () => {
       search: searchTerm || undefined,
       itemId: itemFilter.length ? itemFilter.join(',') : undefined,
     };
-    if (dateRange.from && dateRange.to) {
-      params.from = dateRange.from.toISOString();
-      params.to = dateRange.to.toISOString();
-    }
+    const isValidDate = date => date instanceof Date && !isNaN(date);
+    if (isValidDate(dateRange.from)) params.from = dateRange.from.toISOString();
+    if (isValidDate(dateRange.to)) params.to = dateRange.to.toISOString();
     return params;
   }, [page, perPage, searchTerm, itemFilter, dateRange]);
 
@@ -96,20 +88,16 @@ const Expenses = () => {
     dispatch(fetchAllExpenses(apiParams));
   }, [dispatch, apiParams]);
 
-
   const chartData = useMemo(() => {
     if (!allExpenses?.length) return { topFive: [], full: [] };
-
     const itemTotals = {};
     allExpenses.forEach(exp => {
       const itemName = exp.item?.name || exp.itemName || 'Unknown';
       itemTotals[itemName] = (itemTotals[itemName] || 0) + Number(exp.amount || 0);
     });
-
     const sorted = Object.entries(itemTotals)
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount);
-
     return { topFive: sorted.slice(0, 5), full: sorted };
   }, [allExpenses]);
 
@@ -164,10 +152,13 @@ const Expenses = () => {
               Edit <DropdownMenuShortcut><PenLine size={16} /></DropdownMenuShortcut>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => {
-              dispatch(setSelectedExpense(row.original));
-              setDeleteModal(true);
-            }} className="text-red-500">
+            <DropdownMenuItem
+              onClick={() => {
+                dispatch(setSelectedExpense(row.original));
+                setDeleteModal(true);
+              }}
+              className="text-red-500"
+            >
               Delete <DropdownMenuShortcut><Trash size={16} /></DropdownMenuShortcut>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -176,18 +167,7 @@ const Expenses = () => {
     }),
   ], [dispatch]);
 
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
-  const handleClearFilters = () => {
-    setSearchTerm('');
-    setItemFilter([]);
-    setDateRange({ from: null, to: null });
-    dispatch(setPage(1));
-  };
+  const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
 
   return (
     <>
@@ -199,7 +179,7 @@ const Expenses = () => {
         <AddButton onClick={() => setOpen(true)} text="Add Expenses" />
       </div>
 
- 
+  
       <div className="flex flex-col lg:flex-row gap-5 py-4">
         <div className="w-full lg:w-[46%] bg-card rounded-xl border shadow-sm p-4">
           <h1 className="text-xl font-bold mb-2">Top 5 Expensive Items</h1>
@@ -217,40 +197,57 @@ const Expenses = () => {
           placeholder="Search by title or expense ID"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="w-[250px]"
+          className="w-full sm:w-[250px]"
         />
-        <FilterSelect
-          label="Item"
-          value={itemFilter}
-          setValue={setItemFilter}
-          options={itemOptions}
-        />
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateRange.from && dateRange.to
-                ? `${format(dateRange.from, 'dd MMM yyyy')} - ${format(dateRange.to, 'dd MMM yyyy')}`
-                : 'Select date range'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="range" selected={dateRange} onSelect={setDateRange} numberOfMonths={2} />
-          </PopoverContent>
-        </Popover>
-        <Button variant="outline" onClick={handleClearFilters}>Clear Filters</Button>
+
+        <FilterSelect label="Item" value={itemFilter} setValue={setItemFilter} options={itemOptions} />
+
+   
+        <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-sm text-gray-600 min-w-[40px]">From:</span>
+            <Input
+              type="date"
+              value={dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : ''}
+              onChange={e => {
+                const value = e.target.value;
+                setDateRange(prev => ({
+                  ...prev,
+                  from: value ? new Date(value) : null,
+                  to: prev.to && value && new Date(value) > prev.to ? null : prev.to
+                }));
+              }}
+              className="w-full sm:w-40"
+            />
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-sm text-gray-600 min-w-[40px]">To:</span>
+            <Input
+              type="date"
+              value={dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : ''}
+              min={dateRange.from ? format(dateRange.from, 'yyyy-MM-dd') : ''}
+              onChange={e => {
+                const value = e.target.value;
+                setDateRange(prev => ({
+                  ...prev,
+                  to: value ? new Date(value) : null
+                }));
+              }}
+              className="w-full sm:w-40"
+              disabled={!dateRange.from}
+            />
+          </div>
+        </div>
       </div>
 
-  
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(group => (
               <TableRow key={group.id}>
                 {group.headers.map(header => (
-                  <TableHead key={header.id}>
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
+                  <TableHead key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
                 ))}
               </TableRow>
             ))}
@@ -262,9 +259,7 @@ const Expenses = () => {
               table.getRowModel().rows.map(row => (
                 <TableRow key={row.original.expenseId}>
                   {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
                 </TableRow>
               ))

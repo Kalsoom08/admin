@@ -12,11 +12,11 @@ export const fetchAllStock = createAsyncThunk(
       if (params.page) query.append('page', params.page);
       if (params.limit) query.append('limit', params.limit);
       if (params.search) query.append('search', params.search);
-      if (params.status && params.status.length) query.append('status', params.status.join(','));
+
+      if (params.status && params.status.length)
+        query.append('stockStatus', params.status.join(','));
 
       const res = await api.get(`/stock-alert?${query.toString()}`);
-      console.log("Stock slice",res);
-      
       return res.data;
     } catch (error) {
       const message = error.response?.data || error.message || 'Failed to fetch stock alerts';
@@ -24,6 +24,7 @@ export const fetchAllStock = createAsyncThunk(
     }
   }
 );
+
 
 export const createStock = createAsyncThunk('stock/create', async body => {
   const res = await api.post('/stock-alert', body);
