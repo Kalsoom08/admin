@@ -7,13 +7,26 @@ export const fetchAllSales = asyncThunkRequest(
   async ({ page = 1, limit = 10, items = [], fromDate, toDate } = {}) => {
     const params = { page, limit };
 
-    // Add multiple items correctly
-    items.forEach(id => params['items'] = params['items'] ? [...[].concat(params['items']), id] : id);
+    
+    if (Array.isArray(items) && items.length > 0) {
+      params.items = items.map(i => i.value || i); 
+    }
 
     if (fromDate) params.fromDate = fromDate;
     if (toDate) params.toDate = toDate;
 
-    const res = await api.get('/sales', { params });
+    const res = await api.get('/sales', {
+      params,
+      paramsSerializer: p =>
+        new URLSearchParams(
+          Object.entries(p).flatMap(([key, value]) =>
+            Array.isArray(value)
+              ? value.map(v => [key, v])
+              : [[key, value]]
+          )
+        ).toString(),
+    });
+
     const { items: salesItems = [], pagination = {} } = res.data;
 
     return {
@@ -32,10 +45,10 @@ export const fetchAllSales = asyncThunkRequest(
   }
 );
 
+
 export const fetchSalesStats = asyncThunkRequest('sales/fetchStats', async () => {
   const res = await api.get(`/sales/stats`);
   const { stats = {}, analytics = {} } = res.data;
-
   return {
     totalSale: stats.totalSale,
     saleThisMonth: stats.saleThisMonth,
@@ -76,7 +89,6 @@ const salesSlice = createSlice({
         state.listLoading = false;
         state.error = payload || error?.message || 'Failed to fetch sales';
       })
-
       .addCase(fetchSalesStats.pending, state => { state.statsLoading = true; })
       .addCase(fetchSalesStats.fulfilled, (state, { payload }) => {
         state.statsLoading = false;

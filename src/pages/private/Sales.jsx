@@ -14,6 +14,7 @@ import { ChartLine } from 'lucide-react';
 import { FaDollarSign } from 'react-icons/fa6';
 import { setPage, setPerPage, fetchAllSales, fetchSalesStats } from '@redux/slice/salesSlice';
 import { fetchCategoryOptions } from '@redux/slice/categorySlice';
+import api from '@utils/axiosInstance';
 
 const columnHelper = createColumnHelper();
 const SmCardSkeleton = () => <div className="animate-pulse bg-gray-200 h-20 w-full rounded-md"></div>;
@@ -28,16 +29,47 @@ const Sales = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [allItems, setAllItems] = useState([]);
 
+  // Fetch items dynamically based on current filters
   useEffect(() => {
-    dispatch(fetchAllSales({ page, limit: perPage, items: itemFilter, fromDate, toDate }));
-    dispatch(fetchSalesStats());
-  }, [page, perPage, itemFilter, fromDate, toDate, dispatch]);
+    const fetchFilteredItems = async () => {
+      try {
+        const params = { limit: 100000, page: 1 };
 
+        if (fromDate) params.fromDate = fromDate;
+        if (toDate) params.toDate = toDate;
+        if (categoryFilter.length) params.category = categoryFilter;
+
+        const res = await api.get('/sales', { params });
+        setAllItems(res.data.items || []);
+      } catch (error) {
+        console.error('Failed to fetch items for filter', error);
+      }
+    };
+
+    fetchFilteredItems();
+  }, [fromDate, toDate, categoryFilter]);
+
+  // Fetch paginated table data and stats
+  useEffect(() => {
+    dispatch(fetchAllSales({
+      page,
+      limit: perPage,
+      items: itemFilter,
+      fromDate,
+      toDate,
+      category: categoryFilter
+    }));
+    dispatch(fetchSalesStats());
+  }, [page, perPage, itemFilter, fromDate, toDate, categoryFilter, dispatch]);
+
+  // Fetch categories if not loaded
   useEffect(() => {
     if (!categoryOptions?.length) dispatch(fetchCategoryOptions());
   }, [categoryOptions, dispatch]);
 
+  // Filter search locally
   const filteredData = useMemo(() => {
     if (!searchTerm.trim()) return data;
     return data.filter(item => item.itemName?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -55,7 +87,7 @@ const Sales = () => {
 
   return (
     <>
-  
+      {/* Stats Cards */}
       <div className="py-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statsLoading
           ? Array(4).fill(0).map((_, idx) => <SmCardSkeleton key={idx} />)
@@ -67,13 +99,11 @@ const Sales = () => {
             ].map((card, idx) => <SmCard key={idx} {...card} />)}
       </div>
 
-   
+      {/* Charts */}
       <div className="flex flex-col lg:flex-row gap-5 py-4">
         <div className="w-full lg:w-[49%] bg-card p-4 rounded-xl">
           <h1>Top Selling Items</h1>
-          {statsLoading ? (
-            <ChartSkeleton />
-          ) : (
+          {statsLoading ? <ChartSkeleton /> : (
             <BarCharts
               data={stats?.analytics?.topSalesItems?.map(i => ({
                 name: i.name,
@@ -86,9 +116,7 @@ const Sales = () => {
         </div>
         <div className="w-full lg:w-[49%] bg-card p-4 rounded-xl">
           <h1>Sales By Category</h1>
-          {statsLoading ? (
-            <ChartSkeleton />
-          ) : (
+          {statsLoading ? <ChartSkeleton /> : (
             <PiLabelCharts
               data={stats?.analytics?.salesByCategory?.map(c => ({
                 categoryName: c.categoryName,
@@ -101,7 +129,7 @@ const Sales = () => {
         </div>
       </div>
 
-
+      {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
         <Input
           placeholder="Search by item name"
@@ -113,52 +141,52 @@ const Sales = () => {
         <FilterSelect
           value={itemFilter}
           setValue={setItemFilter}
-          options={data.map(item => ({ label: item.itemName, value: item.itemId }))}
+          options={allItems.map(item => ({ label: item.itemName, value: item.itemId }))}
           isMulti
           className="min-w-[200px]"
           label="Items"
         />
 
-    <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
-  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-    <span className="text-sm text-gray-600 min-w-[40px]">From:</span>
-    <Input
-      type="date"
-      value={fromDate}
-      onChange={e => {
-        const newFrom = e.target.value;
-        setFromDate(newFrom);
-        // If "to" is earlier than new "from", reset it
-        if (toDate && new Date(newFrom) > new Date(toDate)) {
-          setToDate('');
-        }
-      }}
-      className="w-full sm:w-40"
-    />
-  </div>
+        {/* Date Filters */}
+        <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-sm text-gray-600 min-w-[40px]">From:</span>
+            <Input
+              type="date"
+              value={fromDate}
+              onChange={e => {
+                const newFrom = e.target.value;
+                setFromDate(newFrom);
+                if (toDate && new Date(newFrom) > new Date(toDate)) setToDate('');
+              }}
+              className="w-full sm:w-40"
+            />
+          </div>
 
-  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-    <span className="text-sm text-gray-600 min-w-[40px]">To:</span>
-    <Input
-      type="date"
-      value={toDate}
-      min={fromDate || ''}
-      onChange={e => setToDate(e.target.value)}
-      className="w-full sm:w-40"
-      disabled={!fromDate}
-    />
-  </div>
-</div>
-
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-sm text-gray-600 min-w-[40px]">To:</span>
+            <Input
+              type="date"
+              value={toDate}
+              min={fromDate || ''}
+              onChange={e => setToDate(e.target.value)}
+              className="w-full sm:w-40"
+              disabled={!fromDate}
+            />
+          </div>
+        </div>
       </div>
 
+      {/* Table */}
       <div className="overflow-hidden rounded-md border mt-5">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(hg => (
               <TableRow key={hg.id}>
                 {hg.headers.map(header => (
-                  <TableHead key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
+                  <TableHead key={header.id}>
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
                 ))}
               </TableRow>
             ))}
@@ -170,15 +198,15 @@ const Sales = () => {
               table.getRowModel().rows.map(row => (
                 <TableRow key={row.original.itemId}>
                   {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center">
-                  No results.
-                </TableCell>
+                <TableCell colSpan={columns.length} className="text-center">No results.</TableCell>
               </TableRow>
             )}
           </TableBody>
