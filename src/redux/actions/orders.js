@@ -3,13 +3,18 @@ import api from "@utils/axiosInstance";
 
 export const fetchAllOrders = createAsyncThunk(
   "order/fetchAll",
-  async (_, { getState }) => {
-    const { page, perPage } = getState().order;
-    const response = await api.get(`/order?page=${page}&limit=${perPage}`);
-    console.log("orders",response.data)
-    return response.data; 
+  async ({ page, perPage, search, paymentMethods }, { getState }) => {
+    const params = new URLSearchParams();
+    params.append("page", page);
+    params.append("limit", perPage);
+    if (search) params.append("search", search);
+    if (paymentMethods?.length) params.append("paymentMethods", paymentMethods.join(","));
+
+    const response = await api.get(`/order?${params.toString()}`);
+    return response.data;
   }
 );
+
 
 export const deleteOrder = createAsyncThunk(
   "order/delete",
@@ -19,23 +24,10 @@ export const deleteOrder = createAsyncThunk(
   }
 );
 
-// export const fetchOrderStats = createAsyncThunk(
-//   "order/fetchStats",
-//   async () => {
-//     const response = await api.get(`/order/stats`);
-//         console.log(response.data)
-
-//     return response.data; 
-//   }
-// );
-
-
-
 export const fetchOrderStats = createAsyncThunk(
   "order/fetchStats",
   async () => {
     const response = await api.get(`/order/stats`);
-    console.log("Response:", response.data);
     return response.data.stats;
   }
 );

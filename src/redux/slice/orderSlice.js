@@ -19,13 +19,13 @@ const orderSlice = createSlice({
     },
     setPerPage: (state, action) => {
       state.perPage = action.payload;
-      state.page = 1; // Reset page when perPage changes
+      state.page = 1;
     },
     setSelectedOrder: (state, action) => {
       state.selectedOrder = action.payload;
     },
     resetPage: (state) => {
-      state.page = 1; // Reset page for filters
+      state.page = 1;
     },
   },
   extraReducers: (builder) => {
@@ -45,12 +45,10 @@ const orderSlice = createSlice({
         state.data = [];
       })
       .addCase(deleteOrder.fulfilled, (state, action) => {
-        state.data = state.data.filter(
-          (order) => order.orderId !== action.payload
-        );
+        state.data = state.data.filter((order) => order.orderId !== action.payload);
       })
       .addCase(fetchOrderStats.fulfilled, (state, action) => {
-        state.stats = action.payload || {};
+        state.stats = action.payload ?? {};
       });
   },
 });

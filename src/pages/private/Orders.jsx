@@ -30,14 +30,14 @@ import FilterSelect from "@maincomponents/Inputs/FilterSelect";
 import DeleteOrder from "@maincomponents/modal/DeleteOrder";
 import { setPage, setPerPage, resetPage, setSelectedOrder } from "@redux/slice/orderSlice";
 import { fetchAllOrders, fetchOrderStats } from "@redux/actions/orders";
-import CONSTANTS, { PAYMENT_METHODS } from "../../data/Constants";
+import { PAYMENT_METHODS } from "../../data/Constants";
 
 const columnHelper = createColumnHelper();
 const SmCardSkeleton = () => <div className="animate-pulse h-20 w-full rounded-md bg-gray-200"></div>;
 
 const Orders = () => {
   const dispatch = useDispatch();
-  const { data, listLoading, totalRows, page, perPage, stats } = useSelector((state) => state.order);
+  const { data, listLoading, totalRows, page, perPage, totalPages, stats } = useSelector((state) => state.order);
   const [deleteModal, setDeleteModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentFilter, setPaymentFilter] = useState([]);
@@ -49,52 +49,37 @@ const Orders = () => {
   }, [searchTerm, paymentFilter, dispatch]);
 
   useEffect(() => {
-    dispatch(fetchAllOrders({
-      page,
-      perPage,
-      search: searchTerm,
-      paymentMethods: paymentFilter,
-    }));
+    dispatch(fetchAllOrders({ page, perPage, search: searchTerm, paymentMethods: paymentFilter }));
   }, [dispatch, page, perPage, searchTerm, paymentFilter]);
 
   useEffect(() => {
     dispatch(fetchOrderStats());
   }, [dispatch]);
 
-  const toggleRow = (orderId) => {
-    setExpandedRows((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
-  };
+  const toggleRow = (orderId) => setExpandedRows(prev => ({ ...prev, [orderId]: !prev[orderId] }));
 
   const filteredData = useMemo(() => {
     const search = searchTerm.toLowerCase();
-
-    return data.filter((order) => {
+    return data.filter(order => {
       const orderIdStr = String(order.orderId || "").toLowerCase();
       const customerNameStr = (order.customerName || "").toLowerCase();
-      const matchesSearch =
-        !search || orderIdStr.includes(search) || customerNameStr.includes(search);
-      const matchesPayment =
-        paymentFilter.length === 0 ||
-        paymentFilter.includes((order.paymentMethod || "").toUpperCase());
+      const matchesSearch = !search || orderIdStr.includes(search) || customerNameStr.includes(search);
+      const matchesPayment = paymentFilter.length === 0 || paymentFilter.includes((order.paymentMethod || "").toUpperCase());
       return matchesSearch && matchesPayment;
     });
   }, [data, searchTerm, paymentFilter]);
 
   const paymentTotal = useMemo(() => {
-    return filteredData.reduce(
-      (sum, order) =>
-        paymentFilter.includes((order.paymentMethod || "").toUpperCase())
-          ? sum + (Number(order.totalAmount) || 0)
-          : sum,
-      0
-    );
+    return filteredData.reduce((sum, order) => 
+      paymentFilter.includes((order.paymentMethod || "").toUpperCase()) ? sum + (Number(order.totalAmount) || 0) : sum
+    , 0);
   }, [filteredData, paymentFilter]);
 
   const columns = useMemo(() => [
     columnHelper.accessor("orderId", { header: "Order ID", cell: ({ row }) => <div className="w-fit text-nowrap pl-1">#{row.original.orderId}</div> }),
     columnHelper.accessor("items", { header: "Items", cell: ({ row }) => {
-      const itemNames = row.original.items?.map((i) => `${i.name} x${i.quantity}`).join(", ") || "N/A";
-      return <div className="w-fit text-nowrap" title={itemNames}>{itemNames.length > 50 ? `${itemNames.slice(0, 50)}...` : itemNames}</div>;
+      const itemNames = row.original.items?.map(i => `${i.name} x${i.quantity}`).join(", ") || "N/A";
+      return <div className="w-fit text-nowrap" title={itemNames}>{itemNames.length > 50 ? `${itemNames.slice(0,50)}...` : itemNames}</div>;
     }}),
     columnHelper.accessor("totalAmount", { header: "Amount", cell: ({ row }) => <div className="w-fit text-nowrap">Rs {row.original.totalAmount ?? 0}</div> }),
     columnHelper.accessor("paymentMethod", { header: "Payment", cell: ({ row }) => <div className="w-fit text-nowrap capitalize">{row.original.paymentMethod || "Pending"}</div> }),
@@ -102,28 +87,19 @@ const Orders = () => {
     columnHelper.accessor("actions", { header: "Actions", cell: ({ row }) => (
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="flex h-8 w-8 p-0">
-            <Ellipsis className="h-4 w-4" />
-          </Button>
+          <Button variant="ghost" className="flex h-8 w-8 p-0"><Ellipsis className="h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[140px]">
-          <DropdownMenuItem className="text-red-500" onClick={() => { dispatch(setSelectedOrder(row.original)); setDeleteModal(true); }}>
-            Delete <Trash size={15} className="ml-auto" />
-          </DropdownMenuItem>
+          <DropdownMenuItem className="text-red-500" onClick={() => { dispatch(setSelectedOrder(row.original)); setDeleteModal(true); }}>Delete <Trash size={15} className="ml-auto" /></DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     )}),
     columnHelper.accessor("expand", { header: "Expand", cell: ({ row }) => (
-      <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => toggleRow(row.original.orderId)}>
-        {expandedRows[row.original.orderId] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-      </Button>
+      <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => toggleRow(row.original.orderId)}>{expandedRows[row.original.orderId] ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}</Button>
     )}),
   ], [dispatch, expandedRows]);
 
   const table = useReactTable({ data: filteredData, columns, getCoreRowModel: getCoreRowModel() });
-
-  const handlePageChange = (newPage) => dispatch(setPage(newPage));
-  const handleLimitChange = (limit) => dispatch(setPerPage(limit));
 
   const smCardsData = [
     { name: "Total Orders", totalPrice: stats?.totalOrders ?? 0, iconColor: "bg-blue-100", textColor: "text-blue-600", btnIcon: <ClipboardList size={16} /> },
@@ -142,7 +118,7 @@ const Orders = () => {
       </div>
 
       <div className="py-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats ? smCardsData.map((card, i) => <SmCard key={i} {...card} />) : Array.from({ length: 4 }).map((_, i) => <SmCardSkeleton key={i} />)}
+        {stats ? smCardsData.map((card,i) => <SmCard key={i} {...card} />) : Array.from({length:4}).map((_,i) => <SmCardSkeleton key={i} />)}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -155,23 +131,18 @@ const Orders = () => {
 
       <div className="overflow-hidden rounded-md border mt-5" ref={printRef}>
         <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup, i) => (
-              <TableRow key={i}>
-                {headerGroup.headers.map((header, j) => (
-                  <TableHead key={j}>{flexRender(header.column.columnDef.header, header.getContext())}</TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
+          <TableHeader>{table.getHeaderGroups().map((hg,i) => <TableRow key={i}>{hg.headers.map((h,j) => <TableHead key={j}>{flexRender(h.column.columnDef.header,h.getContext())}</TableHead>)}</TableRow>)}</TableHeader>
           <TableBody>
-            {listLoading ? <TableSkeleton columnsCount={columns.length} /> : table.getRowModel().rows.length ? table.getRowModel().rows.map((row, i) => (
+            {listLoading ? <TableSkeleton columnsCount={columns.length} /> : table.getRowModel().rows.length ? table.getRowModel().rows.map((row,i) => (
               <React.Fragment key={i}>
-                <TableRow>{row.getVisibleCells().map((cell, j) => <TableCell key={j}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>)}</TableRow>
+                <TableRow>{row.getVisibleCells().map((cell,j) => <TableCell key={j}>{flexRender(cell.column.columnDef.cell,cell.getContext())}</TableCell>)}</TableRow>
                 {expandedRows[row.original.orderId] && (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="bg-gray-50 dark:bg-gray-900 p-4">
-                      <ul className="space-y-2">{row.original.items.map((item) => <li key={item.itemId} className="flex justify-between"><span>{item.name} x{item.quantity}</span><span>Rs {(item.price * item.quantity).toFixed(2)}</span></li>)}{row.original.description && <li className="mt-2 text-sm text-gray-600 dark:text-gray-300"><strong>Note:</strong> {row.original.description}</li>}</ul>
+                      <ul className="space-y-2">
+                        {row.original.items.map(item => <li key={item.itemId} className="flex justify-between"><span>{item.name} x{item.quantity}</span><span>Rs {(item.price*item.quantity).toFixed(2)}</span></li>)}
+                        {row.original.description && <li className="mt-2 text-sm text-gray-600 dark:text-gray-300"><strong>Note:</strong> {row.original.description}</li>}
+                      </ul>
                     </TableCell>
                   </TableRow>
                 )}
@@ -181,7 +152,14 @@ const Orders = () => {
         </Table>
       </div>
 
-      <TablePagination totalRecords={filteredData.length} totalPages={Math.ceil(filteredData.length / perPage)} limit={perPage} currentPage={page} onLimitChange={handleLimitChange} onPageChange={handlePageChange} />
+      <TablePagination
+        totalRecords={totalRows}
+        totalPages={totalPages}
+        limit={perPage}
+        currentPage={page}
+        onLimitChange={(limit)=>dispatch(setPerPage(limit))}
+        onPageChange={(newPage)=>dispatch(setPage(newPage))}
+      />
 
       {deleteModal && <DeleteOrder open={deleteModal} onClose={() => { dispatch(setSelectedOrder(null)); setDeleteModal(false); }} />}
     </>

@@ -25,7 +25,8 @@ const payrollMonthOptions = Object.entries(MONTH_ITEM).map(([key, value]) => ({
 
 const AddEditPayRoll = ({ isEdit, open, onClose }) => {
   const dispatch = useDispatch();
-  const { selectedPayRoll } = useSelector(state => state.payroll);
+
+  const { selectedPayRoll, page, perPage, filters } = useSelector(state => state.payroll);
   const employees = useSelector(state => state.employee.data);
 
   const [modalLoader, setModalLoader] = useState(false);
@@ -40,17 +41,19 @@ const AddEditPayRoll = ({ isEdit, open, onClose }) => {
     comment: ''
   };
 
-  const { handleSubmit, reset, setValue, watch, ...form } = useForm({
-        // resolver: yupResolver(payrollSchema),
+  const { handleSubmit, reset, ...form } = useForm({
+    // resolver: yupResolver(payrollSchema),
     mode: 'onBlur',
     defaultValues
   });
 
+ 
   useEffect(() => {
     if (employees.length === 0) {
       dispatch(fetchAllEmployee({ page: 1, perPage: 100 }));
     }
-  }, [dispatch, employees.length]); 
+  }, [dispatch, employees.length]);
+
 
   useEffect(() => {
     if (isEdit && selectedPayRoll) {
@@ -63,12 +66,15 @@ const AddEditPayRoll = ({ isEdit, open, onClose }) => {
         status: selectedPayRoll.status,
         comment: selectedPayRoll.comment
       });
+    } else {
+      reset(defaultValues);
     }
   }, [isEdit, selectedPayRoll, reset]);
 
   async function onSubmit(values) {
     if (modalLoader) return;
     setModalLoader(true);
+
     try {
       const basePayload = {
         month: values.month.replace(/^0/, ''),
@@ -85,13 +91,33 @@ const AddEditPayRoll = ({ isEdit, open, onClose }) => {
         }
         const payload = { ...basePayload, userId: Number(values.userId[0]) };
         await dispatch(updatePayRoll({ id: selectedPayRoll.salaryId, body: payload })).unwrap();
-        await dispatch(fetchAllPayRoll());
+        await dispatch(
+          fetchAllPayRoll({
+            page,
+            limit: perPage,
+            search: filters.search,
+            status: filters.status,
+            month: filters.month
+          })
+        );
         successToast('Payroll updated successfully');
       } else {
         const payload = { ...basePayload, userId: values.userId.map(Number) };
         await dispatch(createPayRoll(payload)).unwrap();
+
+        await dispatch(
+          fetchAllPayRoll({
+            page,
+            limit: perPage,
+            search: filters.search,
+            status: filters.status,
+            month: filters.month
+          })
+        );
+
         successToast('Payroll created successfully');
       }
+
       onClose();
     } catch (error) {
       console.error(error);
