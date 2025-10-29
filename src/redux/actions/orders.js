@@ -1,14 +1,16 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "@utils/axiosInstance";
 
+// @redux/actions/orders.js
 export const fetchAllOrders = createAsyncThunk(
   "order/fetchAll",
-  async ({ page, perPage, search, paymentMethods }, { getState }) => {
+  async ({ page, perPage, search, paymentMethods, status }, { getState }) => {
     const params = new URLSearchParams();
     params.append("page", page);
     params.append("limit", perPage);
     if (search) params.append("search", search);
-    if (paymentMethods?.length) params.append("paymentMethods", paymentMethods.join(","));
+    if (status?.length) params.append("status", status.join(",")); // optional: status filter
+    if (paymentMethods?.length) params.append("paymentMethod", paymentMethods.join(",")); // backend expects comma-separated
 
     const response = await api.get(`/order?${params.toString()}`);
     return response.data;
