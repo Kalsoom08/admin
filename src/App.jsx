@@ -30,6 +30,6 @@ function App() {
       checkLogin();
     }
   }, []);
-  return <>{loading ? <MainLoader /> : <RouterProvider router={routes} />}</>;
+  return <div className='dark:bg-[##0f172d]'>{loading ? <MainLoader /> : <RouterProvider router={routes} />}</div>;
 }
 export default App;

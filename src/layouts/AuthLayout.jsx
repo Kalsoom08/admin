@@ -57,7 +57,7 @@ export default function AuthLayout({ headerText, description, children }) {
         <Card className="w-full max-w-md rounded-2xl shadow-lg my-6 md:my-0">
           <CardHeader>
             <CardTitle className="flex flex-col items-center">
-              <img src={logo} alt="cafe logo" className="mb-2 h-16 w-16" />
+              <img src={logo} alt="cafe logo" className="mb-2 h-20 w-20" />
               <h2 className="text-xl font-semibold">{headerText}</h2>
             </CardTitle>
             <CardDescription>{description}</CardDescription>
